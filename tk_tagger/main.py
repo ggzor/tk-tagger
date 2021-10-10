@@ -75,7 +75,13 @@ def redraw():
         x1 = state.real_image_width
         y1 = y0
         canvas.create_line(
-            x0, y0, x1, y1, fill="black", width=options.CELL_BORDER_WIDTH, tags=CELL_TAG
+            x0,
+            y0,
+            x1,
+            y1,
+            fill=options.CELL_BORDER_COLOR,
+            width=options.CELL_BORDER_WIDTH,
+            tags=CELL_TAG,
         )
 
     for c in range(1, state.columns):
@@ -84,7 +90,13 @@ def redraw():
         x1 = x0
         y1 = state.real_image_height
         canvas.create_line(
-            x0, y0, x1, y1, fill="black", width=options.CELL_BORDER_WIDTH, tags=CELL_TAG
+            x0,
+            y0,
+            x1,
+            y1,
+            fill=options.CELL_BORDER_COLOR,
+            width=options.CELL_BORDER_WIDTH,
+            tags=CELL_TAG,
         )
 
     focused_cell = state.get_focused_state_by_cell()
@@ -96,7 +108,13 @@ def redraw():
 
         if focused_cell[(x, y)]:
             canvas.create_rectangle(
-                x0, y0, x1, y1, outline="red", width=2, tags=CELL_TAG
+                x0,
+                y0,
+                x1,
+                y1,
+                outline=options.CELL_FOCUS_BORDER_COLOR,
+                width=options.CELL_FOCUS_BORDER_WIDTH,
+                tags=CELL_TAG,
             )
 
     canvas.create_oval(
