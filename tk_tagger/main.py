@@ -8,11 +8,12 @@ from sys import argv
 import time
 import tkinter as tk
 from tkinter.constants import BOTH, NW, YES
-from typing import Any, DefaultDict, Dict, Tuple
+from typing import Any, DefaultDict, Dict, List, Tuple
 
 from PIL import Image, ImageTk
 
-from geom import get_circle_grid_overlapping_rects
+from state import CellType, StateData, Transition, TransitionType
+import args
 
 if len(argv) != 2:
     print(f"Usage: {argv[0]} IMAGE")
@@ -21,141 +22,24 @@ if len(argv) != 2:
 IMAGE = argv[1]
 
 src = Image.open(IMAGE)
-INITIAL_WIDTH, INITIAL_HEIGHT = src.size
+src_width, src_height = src.size
 
-CELL_OPACITY = 0.5
-CELL_SIZE = 100
-CELL_BORDER_WIDTH = 1
-
-
-POINTER_SIZE_INITIAL = CELL_SIZE // 2
-POINTER_SIZE_MIN = 30
-POINTER_SIZE_MAX = CELL_SIZE * 2
-
-POINTER_OUTLINE_WIDTH = 2
-POINTER_SIZE_CHANGE_DELTA = 20
-
-
-class CellType(Enum):
-    IGNORE = auto()
-    FIRE = auto()
-    SMOKE = auto()
-    OTHER = auto()
-
-
-class State(Enum):
-    NORMAL = auto()
-
-
-@dataclass
-class StateData:
-    cell_state: DefaultDict[Tuple[int, int], CellType] = field(
-        default_factory=lambda: defaultdict(lambda: CellType.OTHER)
-    )
-
-    mouse_x: int = 0
-    mouse_y: int = 0
-    pointer_size: int = POINTER_SIZE_INITIAL
-
-    def get_focused_state_by_cell(self):
-        cells: DefaultDict[Tuple[int, int], bool] = defaultdict(lambda: False)
-
-        sx, sy = self.pointer_cell
-        cells[(sx, sy)] = True
-
-        for coord in get_circle_grid_overlapping_rects(
-            (self.mouse_x, self.mouse_y),
-            self.pointer_size // 2,
-            self.real_cell_size,
-            self.real_cell_size,
-        ):
-            cells[coord] = True
-
-        return cells
-
-    @property
-    def pointer_cell(self):
-        return self.mouse_x // self.real_cell_size, self.mouse_y // self.real_cell_size
-
-    @property
-    def pointer_coords(self):
-        x0 = state.mouse_x - (state.pointer_size / 2)
-        y0 = state.mouse_y - (state.pointer_size / 2)
-        x1 = x0 + state.pointer_size
-        y1 = y0 + state.pointer_size
-        return x0, y0, x1, y1
-
-    @property
-    def pointer_affected_cells(self):
-        pass
-
-    @property
-    def size_ratio(self):
-        return image_dimensions[0] / INITIAL_WIDTH
-
-    @property
-    def real_cell_size(self):
-        return int(state.size_ratio * CELL_SIZE)
-
-    @property
-    def rows(self):
-        return INITIAL_HEIGHT // CELL_SIZE
-
-    @property
-    def columns(self):
-        return INITIAL_WIDTH // CELL_SIZE
-
-    @property
-    def all_cells(self):
-        for y in range(self.rows):
-            for x in range(self.columns):
-                yield (x, y, self.cell_state[(x, y)])
-
-
-class TransitionType(Enum):
-    MOVE = auto()
-    DRAG = auto()
-    RELEASE = auto()
-    MODIFY_POINTER_SIZE = auto()
-
-
-state_type = State.NORMAL
-state = StateData()
-image_dimensions = src.size
-
-Transition = Tuple[TransitionType, Any]
-
-
-def reduce_mut(transition: Transition):
-    ttype, data = transition
-
-    if ttype == TransitionType.MOVE or ttype == TransitionType.DRAG:
-        mouse_x, mouse_y = data
-        state.mouse_x = mouse_x
-        state.mouse_y = mouse_y
-
-    if ttype == TransitionType.MOVE or ttype == TransitionType.DRAG:
-        pass
-    elif ttype == TransitionType.MODIFY_POINTER_SIZE:
-        state.pointer_size = max(
-            POINTER_SIZE_MIN, min(state.pointer_size + data, POINTER_SIZE_MAX)
-        )
+state = StateData(args.CELL_SIZE, src_width, src_height)
 
 
 def handle_transition(transition: Transition):
     start = time.time_ns()
-    reduce_mut(transition)
+    state.reduce_mut(transition)
     redraw()
     end = time.time_ns()
-    print("Time drawing:", (end - start) / 1e6)
+    # print("Time drawing:", (end - start) / 1e6)
 
 
 window = tk.Tk()
 canvas = tk.Canvas()
 image = canvas.create_image((0, 0), anchor=NW)
 
-
-CELLS = "CELLS"
+CELL_TAG = "CELLS"
 
 
 def make_cell_image(fill):
@@ -165,7 +49,7 @@ def make_cell_image(fill):
             state.real_cell_size,
             state.real_cell_size,
         ),
-        (*window.winfo_rgb(fill), int(CELL_OPACITY * 255)),
+        (*window.winfo_rgb(fill), int(args.CELL_OPACITY * 255)),
     )
 
     return ImageTk.PhotoImage(cell_image)
@@ -175,7 +59,7 @@ cell_image: Dict[CellType, ImageTk.PhotoImage] = {}
 
 
 def redraw():
-    canvas.delete(CELLS)
+    canvas.delete(CELL_TAG)
 
     global cell_image
     cell_image = {
@@ -185,34 +69,28 @@ def redraw():
         CellType.IGNORE: make_cell_image("black"),
     }
 
-    for x, y, cell_type in state.all_cells:
-        x0 = x * state.real_cell_size
-        y0 = y * state.real_cell_size
-
-        canvas.create_image(
-            x0,
-            y0,
-            image=cell_image[cell_type],
-            anchor=NW,
-            tags=CELLS,
-        )
+    if state.show_cells:
+        for x, y, cell_type in state.all_real_cells:
+            canvas.create_image(
+                x, y, image=cell_image[cell_type], anchor=NW, tags=CELL_TAG
+            )
 
     for r in range(1, state.rows):
         x0 = 0
         y0 = r * state.real_cell_size
-        x1 = image_dimensions[0]
+        x1 = state.real_image_width
         y1 = y0
         canvas.create_line(
-            x0, y0, x1, y1, fill="black", width=CELL_BORDER_WIDTH, tags=CELLS
+            x0, y0, x1, y1, fill="black", width=args.CELL_BORDER_WIDTH, tags=CELL_TAG
         )
 
     for c in range(1, state.columns):
         x0 = c * state.real_cell_size
         y0 = 0
         x1 = x0
-        y1 = image_dimensions[1]
+        y1 = state.real_image_height
         canvas.create_line(
-            x0, y0, x1, y1, fill="black", width=CELL_BORDER_WIDTH, tags=CELLS
+            x0, y0, x1, y1, fill="black", width=args.CELL_BORDER_WIDTH, tags=CELL_TAG
         )
 
     focused_cell = state.get_focused_state_by_cell()
@@ -223,14 +101,16 @@ def redraw():
         y1 = y0 + state.real_cell_size
 
         if focused_cell[(x, y)]:
-            canvas.create_rectangle(x0, y0, x1, y1, outline="red", width=2, tags=CELLS)
+            canvas.create_rectangle(
+                x0, y0, x1, y1, outline="red", width=2, tags=CELL_TAG
+            )
 
     canvas.create_oval(
         *state.pointer_coords,
         dash=(10, 8),
         outline="red",
-        width=POINTER_OUTLINE_WIDTH,
-        tags=CELLS,
+        width=args.POINTER_OUTLINE_WIDTH,
+        tags=CELL_TAG,
     )
 
 
@@ -245,6 +125,8 @@ def transition_from_mouse(event):
             handle_transition((TransitionType.MOVE, (event.x, event.y)))
     elif event.type == tk.EventType.ButtonRelease:
         handle_transition((TransitionType.RELEASE, (event.x, event.y)))
+    elif event.type == tk.EventType.ButtonPress:
+        handle_transition((TransitionType.PRESS, (event.x, event.y)))
     else:
         print(event)
 
@@ -252,39 +134,47 @@ def transition_from_mouse(event):
 def transition_from_wheel(event):
     if event.num == 4:
         handle_transition(
-            (TransitionType.MODIFY_POINTER_SIZE, +POINTER_SIZE_CHANGE_DELTA)
+            (TransitionType.MODIFY_POINTER_SIZE, +args.POINTER_SIZE_CHANGE_DELTA)
         )
     elif event.num == 5:
         handle_transition(
-            (TransitionType.MODIFY_POINTER_SIZE, -POINTER_SIZE_CHANGE_DELTA)
+            (TransitionType.MODIFY_POINTER_SIZE, -args.POINTER_SIZE_CHANGE_DELTA)
         )
 
 
-def adjust_image(_):
-    global image_dimensions
+def transition_from_key(event):
+    if event.char == "t":
+        handle_transition((TransitionType.TOGGLE_CELLS, None))
+    elif event.char == "\x1a":
+        # Ctrl-Z
+        handle_transition((TransitionType.UNDO_CELLS, None))
+    else:
+        print(event)
 
+
+def adjust_image(_):
     raster = src.copy()
     raster.thumbnail((window.winfo_width(), 1000))
-    image_dimensions = raster.size
     photo = ImageTk.PhotoImage(raster)
     canvas.itemconfigure(image, image=photo)
 
     # Avoid garbage collection
     canvas.photo = photo
 
-    redraw()
+    handle_transition((TransitionType.RESIZE_IMAGE, raster.size))
 
 
 canvas.bind("<Configure>", adjust_image)
 
 canvas.bind("<Motion>", transition_from_mouse)
 canvas.bind("<ButtonRelease-1>", transition_from_mouse)
+canvas.bind("<ButtonPress-1>", transition_from_mouse)
 
 window.bind("<Button-4>", transition_from_wheel)
 window.bind("<Button-5>", transition_from_wheel)
 
-window.bind("<KeyPress>", print)
-window.bind("<KeyRelease>", print)
+window.bind("<KeyPress>", transition_from_key)
+window.bind("<KeyRelease>", transition_from_key)
 
 
 canvas.pack(fill=BOTH, expand=YES)
