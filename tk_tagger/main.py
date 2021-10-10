@@ -1,45 +1,31 @@
 """
-Módulo principal
+Main module
 """
-from collections import defaultdict
-from dataclasses import dataclass, field
-from enum import Enum, auto
-from sys import argv
-import time
 import tkinter as tk
 from tkinter.constants import BOTH, NW, YES
-from typing import Any, DefaultDict, Dict, List, Tuple
+from typing import Dict
 
 from PIL import Image, ImageTk
 
+import options
 from state import CellType, StateData, Transition, TransitionType
-import args
 
-if len(argv) != 2:
-    print(f"Usage: {argv[0]} IMAGE")
-    exit()
-
-IMAGE = argv[1]
+args = options.parse_args()
+IMAGE = args.image
 
 src = Image.open(IMAGE)
 src_width, src_height = src.size
-
-state = StateData(args.CELL_SIZE, src_width, src_height)
-
-
-def handle_transition(transition: Transition):
-    start = time.time_ns()
-    state.reduce_mut(transition)
-    redraw()
-    end = time.time_ns()
-    # print("Time drawing:", (end - start) / 1e6)
-
+state = StateData(options.CELL_SIZE, src_width, src_height)
 
 window = tk.Tk()
 canvas = tk.Canvas()
 image = canvas.create_image((0, 0), anchor=NW)
 
-CELL_TAG = "CELLS"
+
+def main():
+    bind_events()
+    make_layout()
+    window.mainloop()
 
 
 def make_cell_image(fill):
@@ -49,13 +35,15 @@ def make_cell_image(fill):
             state.real_cell_size,
             state.real_cell_size,
         ),
-        (*window.winfo_rgb(fill), int(args.CELL_OPACITY * 255)),
+        (*window.winfo_rgb(fill), int(options.CELL_OPACITY * 255)),
     )
 
     return ImageTk.PhotoImage(cell_image)
 
 
+# Blame the garbage collector
 cell_image: Dict[CellType, ImageTk.PhotoImage] = {}
+CELL_TAG = "CELLS"
 
 
 def redraw():
@@ -81,7 +69,7 @@ def redraw():
         x1 = state.real_image_width
         y1 = y0
         canvas.create_line(
-            x0, y0, x1, y1, fill="black", width=args.CELL_BORDER_WIDTH, tags=CELL_TAG
+            x0, y0, x1, y1, fill="black", width=options.CELL_BORDER_WIDTH, tags=CELL_TAG
         )
 
     for c in range(1, state.columns):
@@ -90,7 +78,7 @@ def redraw():
         x1 = x0
         y1 = state.real_image_height
         canvas.create_line(
-            x0, y0, x1, y1, fill="black", width=args.CELL_BORDER_WIDTH, tags=CELL_TAG
+            x0, y0, x1, y1, fill="black", width=options.CELL_BORDER_WIDTH, tags=CELL_TAG
         )
 
     focused_cell = state.get_focused_state_by_cell()
@@ -109,12 +97,22 @@ def redraw():
         *state.pointer_coords,
         dash=(10, 8),
         outline="red",
-        width=args.POINTER_OUTLINE_WIDTH,
+        width=options.POINTER_OUTLINE_WIDTH,
         tags=CELL_TAG,
     )
 
 
 BUTTON1 = 1 << 8
+
+
+def handle_transition(transition: Transition):
+    import time
+
+    start = time.time_ns()
+    state.reduce_mut(transition)
+    redraw()
+    end = time.time_ns()
+    # print("Time drawing:", (end - start) / 1e6)
 
 
 def transition_from_mouse(event):
@@ -134,11 +132,11 @@ def transition_from_mouse(event):
 def transition_from_wheel(event):
     if event.num == 4:
         handle_transition(
-            (TransitionType.MODIFY_POINTER_SIZE, +args.POINTER_SIZE_CHANGE_DELTA)
+            (TransitionType.MODIFY_POINTER_SIZE, +options.POINTER_SIZE_CHANGE_DELTA)
         )
     elif event.num == 5:
         handle_transition(
-            (TransitionType.MODIFY_POINTER_SIZE, -args.POINTER_SIZE_CHANGE_DELTA)
+            (TransitionType.MODIFY_POINTER_SIZE, -options.POINTER_SIZE_CHANGE_DELTA)
         )
 
 
@@ -164,18 +162,23 @@ def adjust_image(_):
     handle_transition((TransitionType.RESIZE_IMAGE, raster.size))
 
 
-canvas.bind("<Configure>", adjust_image)
+def bind_events():
+    canvas.bind("<Configure>", adjust_image)
 
-canvas.bind("<Motion>", transition_from_mouse)
-canvas.bind("<ButtonRelease-1>", transition_from_mouse)
-canvas.bind("<ButtonPress-1>", transition_from_mouse)
+    canvas.bind("<Motion>", transition_from_mouse)
+    canvas.bind("<ButtonRelease-1>", transition_from_mouse)
+    canvas.bind("<ButtonPress-1>", transition_from_mouse)
 
-window.bind("<Button-4>", transition_from_wheel)
-window.bind("<Button-5>", transition_from_wheel)
+    window.bind("<Button-4>", transition_from_wheel)
+    window.bind("<Button-5>", transition_from_wheel)
 
-window.bind("<KeyPress>", transition_from_key)
-window.bind("<KeyRelease>", transition_from_key)
+    window.bind("<KeyPress>", transition_from_key)
+    window.bind("<KeyRelease>", transition_from_key)
 
 
-canvas.pack(fill=BOTH, expand=YES)
-window.mainloop()
+def make_layout():
+    canvas.pack(fill=BOTH, expand=YES)
+
+
+if __name__ == "__main__":
+    main()

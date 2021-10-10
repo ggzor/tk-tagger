@@ -6,7 +6,7 @@ from enum import Enum, auto
 from collections import defaultdict
 from typing import Any, DefaultDict, Tuple
 
-import args
+import options
 import geom
 
 
@@ -53,7 +53,7 @@ class StateData:
         self.mouse_x = 0
         self.mouse_y = 0
 
-        self.pointer_size = args.POINTER_SIZE_INITIAL
+        self.pointer_size = options.POINTER_SIZE_INITIAL
 
     def get_focused_state_by_cell(self):
         cells: DefaultDict[Coord, bool] = defaultdict(lambda: False)
@@ -139,10 +139,10 @@ class StateData:
                 self.cell_state = self.prev_cell_states.pop()
         elif ttype == TransitionType.MODIFY_POINTER_SIZE:
             self.pointer_size = max(
-                args.POINTER_SIZE_MIN,
+                options.POINTER_SIZE_MIN,
                 min(
                     self.pointer_size + data,
-                    args.POINTER_SIZE_MAX,
+                    options.POINTER_SIZE_MAX,
                 ),
             )
         elif ttype == TransitionType.TOGGLE_CELLS:
