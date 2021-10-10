@@ -1,6 +1,7 @@
 """
 Main module
 """
+import functools
 from pathlib import Path
 import tkinter as tk
 from tkinter.constants import BOTH, NW, YES
@@ -54,21 +55,33 @@ def make_cell_image(fill):
 
 
 # Blame the garbage collector
-cell_image: Dict[CellType, ImageTk.PhotoImage] = {}
 CELL_TAG = "CELLS"
 
 
-def redraw():
-    print(state.offset_x, state.offset_y)
-    canvas.delete(CELL_TAG)
+cell_image: Dict[CellType, ImageTk.PhotoImage] = {}
 
+
+@functools.lru_cache(maxsize=1)
+def generate_images(deps):
     global cell_image
     cell_image = {c: make_cell_image(options.CELL_COLORS[c]) for c in CellType}
+
+
+CELL_IMAGE_TAG = "CELL_IMAGE_TAG"
+
+
+@functools.lru_cache(maxsize=1)
+def display_cells(deps):
+    canvas.delete(CELL_IMAGE_TAG)
 
     if state.show_cells:
         for x, y, cell_type in state.all_real_cells:
             canvas.create_image(
-                x, y, image=cell_image[cell_type], anchor=NW, tags=CELL_TAG
+                x,
+                y,
+                image=cell_image[cell_type],
+                anchor=NW,
+                tags=CELL_IMAGE_TAG,
             )
 
     for r in range(0, state.rows + 1):
@@ -83,7 +96,7 @@ def redraw():
             y1,
             fill=options.CELL_BORDER_COLOR,
             width=options.CELL_BORDER_WIDTH,
-            tags=CELL_TAG,
+            tags=CELL_IMAGE_TAG,
         )
 
     for c in range(0, state.columns + 1):
@@ -98,8 +111,26 @@ def redraw():
             y1,
             fill=options.CELL_BORDER_COLOR,
             width=options.CELL_BORDER_WIDTH,
-            tags=CELL_TAG,
+            tags=CELL_IMAGE_TAG,
         )
+
+
+def redraw():
+    canvas.delete(CELL_TAG)
+
+    generate_images(frozenset([state.real_cell_size]))
+
+    display_cells(
+        frozenset(
+            [
+                state.real_cell_size,
+                state.offset_x,
+                state.offset_y,
+                state.show_cells,
+                frozenset(state.cell_state.items()),
+            ]
+        )
+    )
 
     if not state.dragging:
         focused_cell = state.get_focused_state_by_cell()
