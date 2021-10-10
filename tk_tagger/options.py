@@ -1,6 +1,15 @@
 from argparse import ArgumentParser
+from cell import CellType
 
 DEBUG = True
+
+CELL_COLORS = {
+    CellType.IGNORE: "black",
+    CellType.FIRE: "red",
+    CellType.SMOKE: "blue",
+    CellType.OTHER: "green",
+}
+DEFAULT_CELL_COLOR = CellType.IGNORE
 
 CELL_OPACITY = 0.5
 CELL_SIZE = 100
@@ -15,6 +24,8 @@ POINTER_SIZE_CHANGE_DELTA = 20
 
 # Reduce the pointer radius a bit to avoid millimetric cell accidental selection
 REDUCE_RADIUS = 5
+
+BRUSH_INDICATOR_SIZE = 40
 
 
 def parse_args():

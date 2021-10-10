@@ -8,13 +8,7 @@ from typing import Any, DefaultDict, Tuple
 
 import options
 import geom
-
-
-class CellType(Enum):
-    IGNORE = auto()
-    FIRE = auto()
-    SMOKE = auto()
-    OTHER = auto()
+from cell import CellType
 
 
 class TransitionType(Enum):
@@ -28,6 +22,9 @@ class TransitionType(Enum):
     RESIZE_IMAGE = auto()
     RESET_CELLS = auto()
 
+    PREV_BRUSH = auto()
+    NEXT_BRUSH = auto()
+
 
 Transition = Tuple[TransitionType, Any]
 
@@ -37,7 +34,7 @@ Coord = Tuple[int, int]
 class CellStates(DefaultDict[Coord, CellType]):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.default_factory = lambda: CellType.OTHER
+        self.default_factory = lambda: options.DEFAULT_CELL_COLOR
 
 
 class StateData:
@@ -46,6 +43,7 @@ class StateData:
     ):
         self.prev_cell_states = []
         self.cell_state = CellStates()
+        self.cell_brush = CellType.FIRE
         self.show_cells = True
 
         self.cell_size = cell_size
@@ -139,7 +137,7 @@ class StateData:
 
             for coords, focused in focused_cells.items():
                 if focused:
-                    new_state[coords] = CellType.FIRE
+                    new_state[coords] = self.cell_brush
 
             self.update_cell_state(new_state)
 
@@ -160,3 +158,8 @@ class StateData:
             self.real_image_width, self.real_image_height = data
         elif ttype == TransitionType.RESET_CELLS:
             self.update_cell_state(CellStates())
+        elif ttype == TransitionType.PREV_BRUSH or ttype == TransitionType.NEXT_BRUSH:
+            offset = -1 if ttype == TransitionType.PREV_BRUSH else +1
+            brushes = list(CellType)
+            new_brush_idx = (brushes.index(self.cell_brush) + offset) % len(brushes)
+            self.cell_brush = brushes[new_brush_idx]
