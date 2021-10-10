@@ -21,6 +21,7 @@ class TransitionType(Enum):
     UNDO_CELLS = auto()
     RESIZE_IMAGE = auto()
     RESET_CELLS = auto()
+    FILL_WITH_BRUSH = auto()
 
     PREV_BRUSH = auto()
     NEXT_BRUSH = auto()
@@ -163,3 +164,13 @@ class StateData:
             brushes = list(CellType)
             new_brush_idx = (brushes.index(self.cell_brush) + offset) % len(brushes)
             self.cell_brush = brushes[new_brush_idx]
+        elif ttype == TransitionType.FILL_WITH_BRUSH:
+            new_state = CellStates()
+            new_state.update(
+                {
+                    (col, row): data
+                    for col in range(self.columns)
+                    for row in range(self.rows)
+                }
+            )
+            self.update_cell_state(new_state)

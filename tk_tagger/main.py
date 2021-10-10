@@ -31,6 +31,7 @@ image = canvas.create_image((0, 0), anchor=NW)
 def main():
     bind_events()
     make_layout()
+    adjust_brush_label()
     window.mainloop()
 
 
@@ -182,6 +183,10 @@ def transition_from_reset():
     handle_transition((TransitionType.RESET_CELLS, None))
 
 
+def transition_from_fill():
+    handle_transition((TransitionType.FILL_WITH_BRUSH, state.cell_brush))
+
+
 photo = None
 
 
@@ -225,6 +230,7 @@ Help:
 
 brush_rect = None
 brush_label = None
+fill_with_button = None
 
 
 def adjust_brush_label():
@@ -232,6 +238,8 @@ def adjust_brush_label():
 
     brush_rect.configure(background=options.CELL_COLORS[state.cell_brush])
     brush_label.configure(text=f"{state.cell_brush.name}{color_disabled}")
+
+    fill_with_button.configure(text=f"Fill all with '{state.cell_brush.name}'")
 
 
 def make_layout():
@@ -253,7 +261,6 @@ def make_layout():
         )
         brush_label.grid(row=0, column=1, padx=5, pady=5)
 
-        adjust_brush_label()
     indicators.pack(anchor="center", pady=10, padx=10)
 
     l1 = tk.Label(text=HELP_TEXT, font="14", justify="left")
@@ -268,6 +275,10 @@ def make_layout():
 
         b2 = tk.Button(buttons, text="Reset", font="14", command=transition_from_reset)
         b2.grid(row=0, column=1, padx=5)
+
+        global fill_with_button
+        fill_with_button = tk.Button(buttons, font="14", command=transition_from_fill)
+        fill_with_button.grid(row=0, column=2, padx=5)
     buttons.pack(anchor="center", pady=20)
 
 
