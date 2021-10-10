@@ -1,6 +1,7 @@
 """
 Main module
 """
+from pathlib import Path
 import tkinter as tk
 from tkinter.constants import BOTH, NW, YES
 from typing import Dict
@@ -9,12 +10,19 @@ from PIL import Image, ImageTk
 
 import options
 from state import CellType, StateData, Transition, TransitionType
+import state_io
 
 args = options.parse_args()
+SOURCE_IMG = Path(args.image)
+TARGET_FILE = SOURCE_IMG.with_suffix(".cells.txt")
 
-src = Image.open(args.image)
+src = Image.open(SOURCE_IMG.absolute())
 src_width, src_height = src.size
 state = StateData(options.CELL_SIZE, src_width, src_height)
+
+if TARGET_FILE.exists():
+    state.cell_state = state_io.read_cells(TARGET_FILE)
+    print(state.cell_state)
 
 window = tk.Tk()
 canvas = tk.Canvas()
@@ -25,6 +33,11 @@ def main():
     bind_events()
     make_layout()
     window.mainloop()
+
+
+def save_and_close():
+    state_io.write_cells(TARGET_FILE, state)
+    exit(0)
 
 
 def make_cell_image(fill):
@@ -191,7 +204,7 @@ def make_layout():
 
     buttons = tk.Frame()
 
-    b1 = tk.Button(buttons, text="Save and close", font="14")
+    b1 = tk.Button(buttons, text="Save and close", font="14", command=save_and_close)
     b1.grid(row=0, column=0, padx=10)
 
     b2 = tk.Button(buttons, text="Reset", font="14")
