@@ -71,10 +71,10 @@ def redraw():
                 x, y, image=cell_image[cell_type], anchor=NW, tags=CELL_TAG
             )
 
-    for r in range(1, state.rows + 1):
-        x0 = 0
-        y0 = r * state.real_cell_size
-        x1 = state.columns * state.real_cell_size
+    for r in range(0, state.rows + 1):
+        x0 = state.offset_x
+        y0 = r * state.real_cell_size + state.offset_y
+        x1 = state.columns * state.real_cell_size + state.offset_x
         y1 = y0
         canvas.create_line(
             x0,
@@ -86,11 +86,11 @@ def redraw():
             tags=CELL_TAG,
         )
 
-    for c in range(1, state.columns + 1):
-        x0 = c * state.real_cell_size
-        y0 = 0
+    for c in range(0, state.columns + 1):
+        x0 = c * state.real_cell_size + state.offset_x
+        y0 = state.offset_y
         x1 = x0
-        y1 = state.rows * state.real_cell_size
+        y1 = state.rows * state.real_cell_size + state.offset_y
         canvas.create_line(
             x0,
             y0,
@@ -101,23 +101,24 @@ def redraw():
             tags=CELL_TAG,
         )
 
-    focused_cell = state.get_focused_state_by_cell()
-    for x, y, cell_type in state.all_cells:
-        x0 = x * state.real_cell_size
-        y0 = y * state.real_cell_size
-        x1 = x0 + state.real_cell_size
-        y1 = y0 + state.real_cell_size
+    if not state.dragging:
+        focused_cell = state.get_focused_state_by_cell()
+        for x, y, cell_type in state.all_cells:
+            x0 = x * state.real_cell_size + state.offset_x
+            y0 = y * state.real_cell_size + state.offset_y
+            x1 = x0 + state.real_cell_size
+            y1 = y0 + state.real_cell_size
 
-        if focused_cell[(x, y)]:
-            canvas.create_rectangle(
-                x0,
-                y0,
-                x1,
-                y1,
-                outline=options.CELL_FOCUS_BORDER_COLOR,
-                width=options.CELL_FOCUS_BORDER_WIDTH,
-                tags=CELL_TAG,
-            )
+            if focused_cell[(x, y)]:
+                canvas.create_rectangle(
+                    x0,
+                    y0,
+                    x1,
+                    y1,
+                    outline=options.CELL_FOCUS_BORDER_COLOR,
+                    width=options.CELL_FOCUS_BORDER_WIDTH,
+                    tags=CELL_TAG,
+                )
 
     canvas.create_oval(
         *state.pointer_coords,

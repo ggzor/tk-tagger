@@ -76,7 +76,7 @@ class StateData:
         cells[(sx, sy)] = True
 
         for coord in geom.get_circle_grid_overlapping_rects(
-            (self.mouse_x, self.mouse_y),
+            (self.mouse_x - self.offset_x, self.mouse_y - self.offset_y),
             self.pointer_size // 2 - options.REDUCE_RADIUS,
             self.real_cell_size,
             self.real_cell_size,
@@ -87,7 +87,10 @@ class StateData:
 
     @property
     def pointer_cell(self):
-        return self.mouse_x // self.real_cell_size, self.mouse_y // self.real_cell_size
+        return (
+            (self.mouse_x - self.offset_x) // self.real_cell_size,
+            (self.mouse_y - self.offset_y) // self.real_cell_size,
+        )
 
     @property
     def pointer_coords(self):
@@ -134,7 +137,11 @@ class StateData:
     @property
     def all_real_cells(self):
         for (x, y, state) in self.all_cells:
-            yield x * self.real_cell_size, y * self.real_cell_size, state
+            yield (
+                x * self.real_cell_size + self.offset_x,
+                y * self.real_cell_size + self.offset_y,
+                state,
+            )
 
     def update_cell_state(self, new_state: CellStates):
         if new_state != self.cell_state:
@@ -199,8 +206,10 @@ class StateData:
                 )
                 self.update_cell_state(new_state)
             elif ttype == TransitionType.DRAG_GRID_PRESS:
+                sx, sy = data
+
                 self.dragging = True
-                self.dragging_start = data
+                self.dragging_start = sx - self.offset_x, sy - self.offset_y
         else:
             if ttype == TransitionType.DRAG_GRID_RELEASE:
                 self.dragging = False
@@ -209,5 +218,8 @@ class StateData:
                 sx, sy = self.dragging_start
                 x, y = data
 
-                self.offset_x = max(0, min(x - sx, self.max_offset_x))
-                self.offset_y = max(0, min(y - sy, self.max_offset_x))
+                self.offset_x = x - sx
+                self.offset_y = y - sy
+
+                self.offset_x = max(0, min(self.offset_x, self.max_offset_x))
+                self.offset_y = max(0, min(self.offset_y, self.max_offset_y))
