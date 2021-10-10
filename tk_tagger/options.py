@@ -13,6 +13,9 @@ POINTER_SIZE_INITIAL = POINTER_SIZE_MIN
 POINTER_OUTLINE_WIDTH = 2
 POINTER_SIZE_CHANGE_DELTA = 20
 
+# Reduce the pointer radius a bit to avoid millimetric cell accidental selection
+REDUCE_RADIUS = 5
+
 
 def parse_args():
     parser = ArgumentParser(description="Tag cells from an image")

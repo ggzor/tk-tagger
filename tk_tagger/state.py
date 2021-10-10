@@ -63,7 +63,7 @@ class StateData:
 
         for coord in geom.get_circle_grid_overlapping_rects(
             (self.mouse_x, self.mouse_y),
-            self.pointer_size // 2,
+            self.pointer_size // 2 - options.REDUCE_RADIUS,
             self.real_cell_size,
             self.real_cell_size,
         ):
