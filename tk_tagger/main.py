@@ -21,7 +21,7 @@ src_width, src_height = src.size
 state = StateData(options.CELL_SIZE, src_width, src_height)
 
 if TARGET_FILE.exists():
-    state.cell_state = state_io.read_cells(TARGET_FILE)
+    state.offset_x, state.offset_y, state.cell_state = state_io.read_cells(TARGET_FILE)
 
 window = tk.Tk()
 canvas = tk.Canvas()
@@ -237,6 +237,7 @@ Help:
 - Press {options.KEYBINDING_TOGGLE_KEY} to toggle cells
 - Press Ctrl-z to undo
 - Scroll to increase/decrease pointer size
+- Drag with the mouse right button to add offset to the cells
 """[
     :-1
 ]
