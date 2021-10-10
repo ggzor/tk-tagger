@@ -15,7 +15,6 @@ class TransitionType(Enum):
     MOVE = auto()
     DRAG = auto()
     PRESS = auto()
-    RELEASE = auto()
     MODIFY_POINTER_SIZE = auto()
     TOGGLE_CELLS = auto()
     UNDO_CELLS = auto()
@@ -25,6 +24,10 @@ class TransitionType(Enum):
 
     PREV_BRUSH = auto()
     NEXT_BRUSH = auto()
+
+    DRAG_GRID = auto()
+    DRAG_GRID_PRESS = auto()
+    DRAG_GRID_RELEASE = auto()
 
 
 Transition = Tuple[TransitionType, Any]
@@ -55,10 +58,16 @@ class StateData:
         self.real_image_width = 100
         self.real_image_height = 100
 
+        self.offset_x = 0
+        self.offset_y = 0
+
         self.mouse_x = 0
         self.mouse_y = 0
 
         self.pointer_size = options.POINTER_SIZE_INITIAL
+
+        self.dragging = False
+        self.dragging_start = None
 
     def get_focused_state_by_cell(self):
         cells: DefaultDict[Coord, bool] = defaultdict(lambda: False)
@@ -101,6 +110,14 @@ class StateData:
         return int(self.size_ratio * self.cell_size)
 
     @property
+    def max_offset_x(self):
+        return self.real_image_width % self.real_cell_size
+
+    @property
+    def max_offset_y(self):
+        return self.real_image_height % self.real_cell_size
+
+    @property
     def rows(self):
         return self.initial_image_height // self.cell_size
 
@@ -127,50 +144,70 @@ class StateData:
     def reduce_mut(self, transition: Transition):
         ttype, data = transition
 
-        if ttype == TransitionType.MOVE or ttype == TransitionType.DRAG:
+        if ttype in [
+            TransitionType.MOVE,
+            TransitionType.DRAG,
+            TransitionType.DRAG_GRID,
+        ]:
             mouse_x, mouse_y = data
             self.mouse_x = mouse_x
             self.mouse_y = mouse_y
 
-        if ttype == TransitionType.DRAG or ttype == TransitionType.PRESS:
-            focused_cells = self.get_focused_state_by_cell()
-            new_state = self.cell_state.copy()
+        if not self.dragging:
+            if ttype == TransitionType.DRAG or ttype == TransitionType.PRESS:
+                focused_cells = self.get_focused_state_by_cell()
+                new_state = self.cell_state.copy()
 
-            for coords, focused in focused_cells.items():
-                if focused:
-                    new_state[coords] = self.cell_brush
+                for coords, focused in focused_cells.items():
+                    if focused:
+                        new_state[coords] = self.cell_brush
 
-            self.update_cell_state(new_state)
+                self.update_cell_state(new_state)
 
-        elif ttype == TransitionType.UNDO_CELLS:
-            if self.prev_cell_states:
-                self.cell_state = self.prev_cell_states.pop()
-        elif ttype == TransitionType.MODIFY_POINTER_SIZE:
-            self.pointer_size = max(
-                options.POINTER_SIZE_MIN,
-                min(
-                    self.pointer_size + data,
-                    options.POINTER_SIZE_MAX,
-                ),
-            )
-        elif ttype == TransitionType.TOGGLE_CELLS:
-            self.show_cells = not self.show_cells
-        elif ttype == TransitionType.RESIZE_IMAGE:
-            self.real_image_width, self.real_image_height = data
-        elif ttype == TransitionType.RESET_CELLS:
-            self.update_cell_state(CellStates())
-        elif ttype == TransitionType.PREV_BRUSH or ttype == TransitionType.NEXT_BRUSH:
-            offset = -1 if ttype == TransitionType.PREV_BRUSH else +1
-            brushes = list(CellType)
-            new_brush_idx = (brushes.index(self.cell_brush) + offset) % len(brushes)
-            self.cell_brush = brushes[new_brush_idx]
-        elif ttype == TransitionType.FILL_WITH_BRUSH:
-            new_state = CellStates()
-            new_state.update(
-                {
-                    (col, row): data
-                    for col in range(self.columns)
-                    for row in range(self.rows)
-                }
-            )
-            self.update_cell_state(new_state)
+            elif ttype == TransitionType.UNDO_CELLS:
+                if self.prev_cell_states:
+                    self.cell_state = self.prev_cell_states.pop()
+            elif ttype == TransitionType.MODIFY_POINTER_SIZE:
+                self.pointer_size = max(
+                    options.POINTER_SIZE_MIN,
+                    min(
+                        self.pointer_size + data,
+                        options.POINTER_SIZE_MAX,
+                    ),
+                )
+            elif ttype == TransitionType.TOGGLE_CELLS:
+                self.show_cells = not self.show_cells
+            elif ttype == TransitionType.RESIZE_IMAGE:
+                self.real_image_width, self.real_image_height = data
+            elif ttype == TransitionType.RESET_CELLS:
+                self.update_cell_state(CellStates())
+            elif (
+                ttype == TransitionType.PREV_BRUSH or ttype == TransitionType.NEXT_BRUSH
+            ):
+                offset = -1 if ttype == TransitionType.PREV_BRUSH else +1
+                brushes = list(CellType)
+                new_brush_idx = (brushes.index(self.cell_brush) + offset) % len(brushes)
+                self.cell_brush = brushes[new_brush_idx]
+            elif ttype == TransitionType.FILL_WITH_BRUSH:
+                new_state = CellStates()
+                new_state.update(
+                    {
+                        (col, row): data
+                        for col in range(self.columns)
+                        for row in range(self.rows)
+                    }
+                )
+                self.update_cell_state(new_state)
+            elif ttype == TransitionType.DRAG_GRID_PRESS:
+                self.dragging = True
+                self.dragging_start = data
+        else:
+            if ttype == TransitionType.DRAG_GRID_RELEASE:
+                self.dragging = False
+                self.dragging_start = None
+            elif ttype == TransitionType.DRAG_GRID:
+                sx, sy = self.dragging_start
+                x, y = data
+
+                self.offset_x = max(0, min(x - sx, self.max_offset_x))
+                self.offset_y = max(0, min(y - sy, self.max_offset_x))

@@ -59,6 +59,7 @@ CELL_TAG = "CELLS"
 
 
 def redraw():
+    print(state.offset_x, state.offset_y)
     canvas.delete(CELL_TAG)
 
     global cell_image
@@ -127,9 +128,6 @@ def redraw():
     )
 
 
-BUTTON1 = 1 << 8
-
-
 def handle_transition(transition: Transition):
     import time
 
@@ -141,16 +139,29 @@ def handle_transition(transition: Transition):
         print("Time drawing:", (end - start) / 1e6)
 
 
+BUTTON1 = 1 << 8
+BUTTON3 = 1 << 10
+
+
 def transition_from_mouse(event):
     if event.type == tk.EventType.Motion:
         if event.state & BUTTON1:
             handle_transition((TransitionType.DRAG, (event.x, event.y)))
+        elif event.state & BUTTON3:
+            handle_transition((TransitionType.DRAG_GRID, (event.x, event.y)))
         else:
             handle_transition((TransitionType.MOVE, (event.x, event.y)))
-    elif event.type == tk.EventType.ButtonRelease:
-        handle_transition((TransitionType.RELEASE, (event.x, event.y)))
-    elif event.type == tk.EventType.ButtonPress:
-        handle_transition((TransitionType.PRESS, (event.x, event.y)))
+    else:
+        if event.num == 1:
+            if event.type == tk.EventType.ButtonPress:
+                handle_transition((TransitionType.PRESS, (event.x, event.y)))
+        elif event.num == 3:
+            if event.type == tk.EventType.ButtonPress:
+                handle_transition((TransitionType.DRAG_GRID_PRESS, (event.x, event.y)))
+            elif event.type == tk.EventType.ButtonRelease:
+                handle_transition(
+                    (TransitionType.DRAG_GRID_RELEASE, (event.x, event.y))
+                )
 
 
 def transition_from_wheel(event):
@@ -209,6 +220,8 @@ def bind_events():
     canvas.bind("<Motion>", transition_from_mouse)
     canvas.bind("<ButtonRelease-1>", transition_from_mouse)
     canvas.bind("<ButtonPress-1>", transition_from_mouse)
+    canvas.bind("<ButtonRelease-3>", transition_from_mouse)
+    canvas.bind("<ButtonPress-3>", transition_from_mouse)
 
     window.bind("<Button-4>", transition_from_wheel)
     window.bind("<Button-5>", transition_from_wheel)
