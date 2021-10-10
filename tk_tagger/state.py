@@ -26,12 +26,18 @@ class TransitionType(Enum):
     TOGGLE_CELLS = auto()
     UNDO_CELLS = auto()
     RESIZE_IMAGE = auto()
+    RESET_CELLS = auto()
 
 
 Transition = Tuple[TransitionType, Any]
 
 Coord = Tuple[int, int]
-CellStates = DefaultDict[Coord, CellType]
+
+
+class CellStates(DefaultDict[Coord, CellType]):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.default_factory = lambda: CellType.OTHER
 
 
 class StateData:
@@ -39,7 +45,7 @@ class StateData:
         self, cell_size: int, initial_image_width: int, initial_image_height: int
     ):
         self.prev_cell_states = []
-        self.cell_state = defaultdict(lambda: CellType.OTHER)
+        self.cell_state = CellStates()
         self.show_cells = True
 
         self.cell_size = cell_size
@@ -114,6 +120,11 @@ class StateData:
         for (x, y, state) in self.all_cells:
             yield x * self.real_cell_size, y * self.real_cell_size, state
 
+    def update_cell_state(self, new_state: CellStates):
+        if new_state != self.cell_state:
+            self.prev_cell_states.append(self.cell_state)
+            self.cell_state = new_state
+
     def reduce_mut(self, transition: Transition):
         ttype, data = transition
 
@@ -124,15 +135,13 @@ class StateData:
 
         if ttype == TransitionType.DRAG or ttype == TransitionType.PRESS:
             focused_cells = self.get_focused_state_by_cell()
-
-            prev_state = self.cell_state.copy()
+            new_state = self.cell_state.copy()
 
             for coords, focused in focused_cells.items():
                 if focused:
-                    self.cell_state[coords] = CellType.FIRE
+                    new_state[coords] = CellType.FIRE
 
-            if self.cell_state != prev_state:
-                self.prev_cell_states.append(prev_state)
+            self.update_cell_state(new_state)
 
         elif ttype == TransitionType.UNDO_CELLS:
             if self.prev_cell_states:
@@ -149,3 +158,5 @@ class StateData:
             self.show_cells = not self.show_cells
         elif ttype == TransitionType.RESIZE_IMAGE:
             self.real_image_width, self.real_image_height = data
+        elif ttype == TransitionType.RESET_CELLS:
+            self.update_cell_state(CellStates())

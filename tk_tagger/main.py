@@ -22,7 +22,6 @@ state = StateData(options.CELL_SIZE, src_width, src_height)
 
 if TARGET_FILE.exists():
     state.cell_state = state_io.read_cells(TARGET_FILE)
-    print(state.cell_state)
 
 window = tk.Tk()
 canvas = tk.Canvas()
@@ -159,6 +158,10 @@ def transition_from_key(event):
         handle_transition((TransitionType.UNDO_CELLS, None))
 
 
+def transition_from_reset():
+    handle_transition((TransitionType.RESET_CELLS, None))
+
+
 photo = None
 
 
@@ -207,7 +210,7 @@ def make_layout():
     b1 = tk.Button(buttons, text="Save and close", font="14", command=save_and_close)
     b1.grid(row=0, column=0, padx=10)
 
-    b2 = tk.Button(buttons, text="Reset", font="14")
+    b2 = tk.Button(buttons, text="Reset", font="14", command=transition_from_reset)
     b2.grid(row=0, column=1, padx=5)
 
     buttons.pack(anchor="w", pady=20)

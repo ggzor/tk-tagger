@@ -1,4 +1,3 @@
-from collections import defaultdict
 from pathlib import Path
 import re
 from state import CellStates, CellType, StateData
@@ -15,11 +14,10 @@ CELL_LINE_RE = re.compile(r"(?P<row>\d+),(?P<column>\d+),(?P<type>\w+)")
 
 
 def read_cells(target: Path) -> CellStates:
-    result = defaultdict(lambda: CellType.OTHER)
+    result = CellStates()
 
     with open(target, "r") as f:
         for line in f:
-            print(line)
             if m := CELL_LINE_RE.match(line):
                 g = m.groupdict()
 
