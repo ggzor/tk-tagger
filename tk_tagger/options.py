@@ -32,6 +32,8 @@ REDUCE_RADIUS = 5
 
 BRUSH_INDICATOR_SIZE = 40
 
+KEYBINDING_TOGGLE_KEY = "f"
+
 
 def parse_args():
     parser = ArgumentParser(description="Tag cells from an image")

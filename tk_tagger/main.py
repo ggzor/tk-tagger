@@ -3,7 +3,7 @@ Main module
 """
 from pathlib import Path
 import tkinter as tk
-from tkinter.constants import BOTH, NW, VERTICAL, Y, YES
+from tkinter.constants import BOTH, NW, YES
 from typing import Dict
 
 from PIL import Image, ImageTk
@@ -165,7 +165,7 @@ def transition_from_wheel(event):
 
 
 def transition_from_key(event):
-    if event.char == "t":
+    if event.char == options.KEYBINDING_TOGGLE_KEY:
         handle_transition((TransitionType.TOGGLE_CELLS, None))
         adjust_brush_label()
     elif event.char == "\x1a" or event.char == "u":
@@ -217,10 +217,10 @@ def bind_events():
     window.bind("<KeyRelease>", transition_from_key)
 
 
-HELP_TEXT = """\
+HELP_TEXT = f"""\
 Help:
 - Press a/d to select the previous/next brush
-- Press t to toggle cells
+- Press {options.KEYBINDING_TOGGLE_KEY} to toggle cells
 - Press Ctrl-z to undo
 - Scroll to increase/decrease pointer size
 """[
