@@ -69,10 +69,10 @@ def redraw():
                 x, y, image=cell_image[cell_type], anchor=NW, tags=CELL_TAG
             )
 
-    for r in range(1, state.rows):
+    for r in range(1, state.rows + 1):
         x0 = 0
         y0 = r * state.real_cell_size
-        x1 = state.real_image_width
+        x1 = state.columns * state.real_cell_size
         y1 = y0
         canvas.create_line(
             x0,
@@ -84,11 +84,11 @@ def redraw():
             tags=CELL_TAG,
         )
 
-    for c in range(1, state.columns):
+    for c in range(1, state.columns + 1):
         x0 = c * state.real_cell_size
         y0 = 0
         x1 = x0
-        y1 = state.real_image_height
+        y1 = state.rows * state.real_cell_size
         canvas.create_line(
             x0,
             y0,
