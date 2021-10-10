@@ -5,12 +5,14 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from sys import argv
+import time
 import tkinter as tk
 from tkinter.constants import BOTH, NW, YES
-from typing import Any, DefaultDict, Dict, List, Tuple
-import time
+from typing import Any, DefaultDict, Dict, Tuple
 
 from PIL import Image, ImageTk
+
+from geom import get_circle_grid_overlapping_rects
 
 if len(argv) != 2:
     print(f"Usage: {argv[0]} IMAGE")
@@ -54,6 +56,26 @@ class StateData:
     mouse_x: int = 0
     mouse_y: int = 0
     pointer_size: int = POINTER_SIZE_INITIAL
+
+    def get_focused_state_by_cell(self):
+        cells: DefaultDict[Tuple[int, int], bool] = defaultdict(lambda: False)
+
+        sx, sy = self.pointer_cell
+        cells[(sx, sy)] = True
+
+        for coord in get_circle_grid_overlapping_rects(
+            (self.mouse_x, self.mouse_y),
+            self.pointer_size // 2,
+            self.real_cell_size,
+            self.real_cell_size,
+        ):
+            cells[coord] = True
+
+        return cells
+
+    @property
+    def pointer_cell(self):
+        return self.mouse_x // self.real_cell_size, self.mouse_y // self.real_cell_size
 
     @property
     def pointer_coords(self):
@@ -164,9 +186,12 @@ def redraw():
     }
 
     for x, y, cell_type in state.all_cells:
+        x0 = x * state.real_cell_size
+        y0 = y * state.real_cell_size
+
         canvas.create_image(
-            x * state.real_cell_size,
-            y * state.real_cell_size,
+            x0,
+            y0,
             image=cell_image[cell_type],
             anchor=NW,
             tags=CELLS,
@@ -190,9 +215,19 @@ def redraw():
             x0, y0, x1, y1, fill="black", width=CELL_BORDER_WIDTH, tags=CELLS
         )
 
+    focused_cell = state.get_focused_state_by_cell()
+    for x, y, cell_type in state.all_cells:
+        x0 = x * state.real_cell_size
+        y0 = y * state.real_cell_size
+        x1 = x0 + state.real_cell_size
+        y1 = y0 + state.real_cell_size
+
+        if focused_cell[(x, y)]:
+            canvas.create_rectangle(x0, y0, x1, y1, outline="red", width=2, tags=CELLS)
+
     canvas.create_oval(
         *state.pointer_coords,
-        dash=[10, 8],
+        dash=(10, 8),
         outline="red",
         width=POINTER_OUTLINE_WIDTH,
         tags=CELLS,
