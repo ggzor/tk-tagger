@@ -11,9 +11,8 @@ import options
 from state import CellType, StateData, Transition, TransitionType
 
 args = options.parse_args()
-IMAGE = args.image
 
-src = Image.open(IMAGE)
+src = Image.open(args.image)
 src_width, src_height = src.size
 state = StateData(options.CELL_SIZE, src_width, src_height)
 
@@ -112,7 +111,8 @@ def handle_transition(transition: Transition):
     state.reduce_mut(transition)
     redraw()
     end = time.time_ns()
-    # print("Time drawing:", (end - start) / 1e6)
+    if options.DEBUG:
+        print("Time drawing:", (end - start) / 1e6)
 
 
 def transition_from_mouse(event):
@@ -125,8 +125,6 @@ def transition_from_mouse(event):
         handle_transition((TransitionType.RELEASE, (event.x, event.y)))
     elif event.type == tk.EventType.ButtonPress:
         handle_transition((TransitionType.PRESS, (event.x, event.y)))
-    else:
-        print(event)
 
 
 def transition_from_wheel(event):
@@ -143,21 +141,22 @@ def transition_from_wheel(event):
 def transition_from_key(event):
     if event.char == "t":
         handle_transition((TransitionType.TOGGLE_CELLS, None))
-    elif event.char == "\x1a":
+    elif event.char == "\x1a" or event.char == "u":
         # Ctrl-Z
         handle_transition((TransitionType.UNDO_CELLS, None))
-    else:
-        print(event)
+
+
+photo = None
 
 
 def adjust_image(_):
+    # Avoid garbage collection
+    global photo
+
     raster = src.copy()
     raster.thumbnail((window.winfo_width(), 1000))
     photo = ImageTk.PhotoImage(raster)
     canvas.itemconfigure(image, image=photo)
-
-    # Avoid garbage collection
-    canvas.photo = photo
 
     handle_transition((TransitionType.RESIZE_IMAGE, raster.size))
 
@@ -176,7 +175,29 @@ def bind_events():
     window.bind("<KeyRelease>", transition_from_key)
 
 
+HELP_TEXT = """\
+Help:
+- Press t to toggle cells
+- Press Ctrl-z to undo
+- Scroll to increase/decrease pointer size
+"""[
+    :-1
+]
+
+
 def make_layout():
+    l1 = tk.Label(text=HELP_TEXT, font="14", justify="left")
+    l1.pack(pady=10, padx=10, anchor="w")
+
+    buttons = tk.Frame()
+
+    b1 = tk.Button(buttons, text="Save and close", font="14")
+    b1.grid(row=0, column=0, padx=10)
+
+    b2 = tk.Button(buttons, text="Reset", font="14")
+    b2.grid(row=0, column=1, padx=5)
+
+    buttons.pack(anchor="w", pady=20)
     canvas.pack(fill=BOTH, expand=YES)
 
 
