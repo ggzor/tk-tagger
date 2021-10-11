@@ -4,7 +4,7 @@ Main module
 import functools
 from pathlib import Path
 import tkinter as tk
-from tkinter.constants import BOTH, NW, YES
+from tkinter.constants import BOTH, NW, W, YES
 from typing import Dict
 
 from PIL import Image, ImageTk
@@ -239,10 +239,10 @@ def adjust_image(_):
     global photo
 
     raster = src.copy()
-    raster.thumbnail((window.winfo_width(), int(window.winfo_height() * 0.7)))
+    raster.thumbnail((window.winfo_width(), int(window.winfo_height() * 0.6)))
     photo = ImageTk.PhotoImage(raster)
     canvas.itemconfigure(image, image=photo)
-    canvas.configure(height=raster.height + 10)
+    canvas.configure(width=raster.width + 2, height=raster.height + 2)
 
     handle_transition((TransitionType.RESIZE_IMAGE, raster.size))
 
@@ -290,7 +290,7 @@ def adjust_brush_label():
 
 
 def make_layout():
-    canvas.pack(fill=BOTH)
+    canvas.pack()
 
     indicators = tk.Frame()
     if True:
