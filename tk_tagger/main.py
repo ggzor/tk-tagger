@@ -215,6 +215,8 @@ def transition_from_key(event):
     elif event.char == "\x1a" or event.char == "u":
         # Ctrl-Z
         handle_transition((TransitionType.UNDO_CELLS, None))
+    elif event.char == "\x19" or event.char == "\x12":
+        handle_transition((TransitionType.REDO_CELLS, None))
     elif event.char == "a":
         handle_transition((TransitionType.PREV_BRUSH, None))
         adjust_brush_label()
@@ -267,7 +269,7 @@ HELP_TEXT = f"""\
 Help:
 - Press a/d to select the previous/next brush
 - Press {options.KEYBINDING_TOGGLE_KEY} to toggle cells
-- Press Ctrl-z to undo
+- Press Ctrl-z to undo and Ctrl-y to redo (only cell state for now)
 - Scroll to increase/decrease pointer size
 - Drag with the mouse right button to add offset to the cells
 """[

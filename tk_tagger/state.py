@@ -9,6 +9,7 @@ from typing import Any, DefaultDict, Tuple
 import options
 import geom
 from cell import CellType
+from undo_redo import UndoRedo
 
 
 class TransitionType(Enum):
@@ -18,6 +19,7 @@ class TransitionType(Enum):
     MODIFY_POINTER_SIZE = auto()
     TOGGLE_CELLS = auto()
     UNDO_CELLS = auto()
+    REDO_CELLS = auto()
     RESIZE_IMAGE = auto()
     RESET_CELLS = auto()
     FILL_WITH_BRUSH = auto()
@@ -45,8 +47,8 @@ class StateData:
     def __init__(
         self, cell_size: int, initial_image_width: int, initial_image_height: int
     ):
-        self.prev_cell_states = []
-        self.cell_state = CellStates()
+        self.cell_state_handler = UndoRedo(CellStates())
+
         self.cell_brush = CellType.FIRE
         self.show_cells = True
 
@@ -86,6 +88,14 @@ class StateData:
             cells[coord] = True
 
         return cells
+
+    @property
+    def cell_state(self):
+        return self.cell_state_handler.current
+
+    @cell_state.setter
+    def cell_state(self, value):
+        self.cell_state_handler.override_last(value)
 
     @property
     def real_offset_x(self):
@@ -166,9 +176,7 @@ class StateData:
             )
 
     def update_cell_state(self, new_state: CellStates):
-        if new_state != self.cell_state:
-            self.prev_cell_states.append(self.cell_state)
-            self.cell_state = new_state
+        self.cell_state_handler.push(new_state)
 
     def reduce_mut(self, transition: Transition):
         ttype, data = transition
@@ -194,8 +202,9 @@ class StateData:
                 self.update_cell_state(new_state)
 
             elif ttype == TransitionType.UNDO_CELLS:
-                if self.prev_cell_states:
-                    self.cell_state = self.prev_cell_states.pop()
+                self.cell_state_handler.undo()
+            elif ttype == TransitionType.REDO_CELLS:
+                self.cell_state_handler.redo()
             elif ttype == TransitionType.MODIFY_POINTER_SIZE:
                 self.pointer_size = max(
                     options.POINTER_SIZE_MIN,
