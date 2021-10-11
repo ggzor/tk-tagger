@@ -45,8 +45,8 @@ def make_cell_image(fill):
     cell_image = Image.new(
         "RGBA",
         (
-            state.real_cell_size,
-            state.real_cell_size,
+            int(state.real_cell_size),
+            int(state.real_cell_size),
         ),
         (*window.winfo_rgb(fill), int(options.CELL_OPACITY * 255)),
     )
@@ -85,9 +85,9 @@ def display_cells(deps):
             )
 
     for r in range(0, state.rows + 1):
-        x0 = state.offset_x
-        y0 = r * state.real_cell_size + state.offset_y
-        x1 = state.columns * state.real_cell_size + state.offset_x
+        x0 = state.real_offset_x
+        y0 = r * state.real_cell_size + state.real_offset_y
+        x1 = state.columns * state.real_cell_size + state.real_offset_x
         y1 = y0
         canvas.create_line(
             x0,
@@ -100,10 +100,10 @@ def display_cells(deps):
         )
 
     for c in range(0, state.columns + 1):
-        x0 = c * state.real_cell_size + state.offset_x
-        y0 = state.offset_y
+        x0 = c * state.real_cell_size + state.real_offset_x
+        y0 = state.real_offset_y
         x1 = x0
-        y1 = state.rows * state.real_cell_size + state.offset_y
+        y1 = state.rows * state.real_cell_size + state.real_offset_y
         canvas.create_line(
             x0,
             y0,
@@ -135,8 +135,8 @@ def redraw():
     if not state.dragging:
         focused_cell = state.get_focused_state_by_cell()
         for x, y, cell_type in state.all_cells:
-            x0 = x * state.real_cell_size + state.offset_x
-            y0 = y * state.real_cell_size + state.offset_y
+            x0 = x * state.real_cell_size + state.real_offset_x
+            y0 = y * state.real_cell_size + state.real_offset_y
             x1 = x0 + state.real_cell_size
             y1 = y0 + state.real_cell_size
 
@@ -169,6 +169,7 @@ def handle_transition(transition: Transition):
     end = time.time_ns()
     if options.DEBUG:
         print("Time drawing:", (end - start) / 1e6)
+        pass
 
 
 BUTTON1 = 1 << 8

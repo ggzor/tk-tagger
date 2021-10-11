@@ -51,6 +51,8 @@ class StateData:
         self.show_cells = True
 
         self.cell_size = cell_size
+        self.cell_width = cell_size
+        self.cell_height = cell_size
 
         self.initial_image_width = initial_image_width
         self.initial_image_height = initial_image_height
@@ -76,7 +78,7 @@ class StateData:
         cells[(sx, sy)] = True
 
         for coord in geom.get_circle_grid_overlapping_rects(
-            (self.mouse_x - self.offset_x, self.mouse_y - self.offset_y),
+            (self.mouse_x - self.real_offset_x, self.mouse_y - self.real_offset_y),
             self.pointer_size // 2 - options.REDUCE_RADIUS,
             self.real_cell_size,
             self.real_cell_size,
@@ -86,10 +88,18 @@ class StateData:
         return cells
 
     @property
+    def real_offset_x(self):
+        return self.offset_x * self.width_ratio
+
+    @property
+    def real_offset_y(self):
+        return self.offset_y * self.height_ratio
+
+    @property
     def pointer_cell(self):
         return (
-            (self.mouse_x - self.offset_x) // self.real_cell_size,
-            (self.mouse_y - self.offset_y) // self.real_cell_size,
+            int((self.mouse_x - self.real_offset_x) / self.real_cell_size),
+            int((self.mouse_y - self.real_offset_y) / self.real_cell_size),
         )
 
     @property
@@ -101,8 +111,20 @@ class StateData:
         return x0, y0, x1, y1
 
     @property
-    def pointer_affected_cells(self):
-        pass
+    def inverse_height_ratio(self):
+        return self.initial_image_height / self.real_image_height
+
+    @property
+    def inverse_width_ratio(self):
+        return self.initial_image_width / self.real_image_width
+
+    @property
+    def width_ratio(self):
+        return self.real_image_width / self.initial_image_width
+
+    @property
+    def height_ratio(self):
+        return self.real_image_height / self.initial_image_height
 
     @property
     def size_ratio(self):
@@ -110,15 +132,15 @@ class StateData:
 
     @property
     def real_cell_size(self):
-        return int(self.size_ratio * self.cell_size)
+        return self.size_ratio * self.cell_size
 
     @property
     def max_offset_x(self):
-        return self.real_image_width % self.real_cell_size
+        return self.initial_image_width % self.cell_size
 
     @property
     def max_offset_y(self):
-        return self.real_image_height % self.real_cell_size
+        return self.initial_image_height % self.cell_size
 
     @property
     def rows(self):
@@ -138,8 +160,8 @@ class StateData:
     def all_real_cells(self):
         for (x, y, state) in self.all_cells:
             yield (
-                x * self.real_cell_size + self.offset_x,
-                y * self.real_cell_size + self.offset_y,
+                x * self.real_cell_size + self.real_offset_x,
+                y * self.real_cell_size + self.real_offset_y,
                 state,
             )
 
@@ -209,7 +231,7 @@ class StateData:
                 sx, sy = data
 
                 self.dragging = True
-                self.dragging_start = sx - self.offset_x, sy - self.offset_y
+                self.dragging_start = sx - self.real_offset_x, sy - self.real_offset_y
         else:
             if ttype == TransitionType.DRAG_GRID_RELEASE:
                 self.dragging = False
@@ -218,8 +240,8 @@ class StateData:
                 sx, sy = self.dragging_start
                 x, y = data
 
-                self.offset_x = x - sx
-                self.offset_y = y - sy
+                self.offset_x = int((x - sx) * self.inverse_width_ratio)
+                self.offset_y = int((y - sy) * self.inverse_height_ratio)
 
                 self.offset_x = max(0, min(self.offset_x, self.max_offset_x))
                 self.offset_y = max(0, min(self.offset_y, self.max_offset_y))
